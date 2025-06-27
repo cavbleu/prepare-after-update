@@ -2,7 +2,7 @@
 
 ## Описание программы
 
-Программа предназначена для автоматической проверки и установки программного обеспечения на Linux-системах после переустановки системы и переазмеченным томом `/home`. Она выполняет следующие функции:
+Программа предназначена для автоматической проверки и установки программного обеспечения на Linux-системах после переустановки системы и переразмеченным томом `/home`. Она выполняет следующие функции:
 
 1. Сканирует домашние директории пользователей
    - Рекурсивный поиск домашних директорий
@@ -36,7 +36,7 @@
 - ОС: Linux (AltLinux, Ubuntu, Debian, RHEL, Fedora и производные)
 - Права `root` для установки пакетов
 - Доступ в интернет для загрузки конфигурационного файла
-- Установленные базовые утилиты: `curl, apt/yum/dnf` (в зависимости от дистрибутива)
+- Установленные базовые утилиты: `curl, apt-get/apt/yum/dnf` (в зависимости от дистрибутива)
 
 ## Сборка
 
@@ -64,22 +64,10 @@ sudo ln -s /usr/local/bin/prepare-after-update /sbin
 Пример:
 ```json
 {
-  "programs": [
-    {
-      "name": "GIMP",
-      "config_paths": [
-        ".config/gimp"
-      ],
-      "check_command": "gimp --version",
-      "action": "install",
-      "packages": {
-        "apt-get": "gimp xsane-gimp2",
-        "apt": "gimp xsane-gimp2",
-        "yum": "gimp",
-        "dnf": "gimp"
-      }
-    }
-  ]
+  "resource_url": "http://mysite.com/config.json",
+  "home_dir": "/home",
+  "log_path": "/var/log/prepare-after-update.log",
+  "exclude_prefixes": ["a_", "admin", "temp_"]
 }
 ```
 
@@ -100,7 +88,7 @@ sudo prepare-after-update [ФЛАГИ]
 | `--home`     | string | Нет          | Путь к домашним директориям пользователей                               | `/home`                                       | `--home /mnt/home`                       |
 | `--log`   | string | Нет          | Полный путь к файлу логов                                               | `./tmp_updates/run.log`                       | `--log /var/log/installer.log`        |
 | `--exclude`  | string | Нет          | Префиксы директорий для исключения (через запятую без пробелов)          | `a_,adminsec`                                 | `--exclude a_,test,temp`                 |
-| `--autoconfig`  | string | Нет          | Генерация шаблона web-конфигурации         | `a_,adminsec`                                 | `--autoconfig my_config.json`                 |
+| `--autoconfig`  | string | Нет          | Генерация шаблона web-конфигурации         | `a_,admin`                                 | `--autoconfig my_config.json`                 |
 | `--user`  | string | Нет          | Указание конкретного пользователя         | `user`                                 | `--user username`                 |
 
 ### Особенности использования флагов:
