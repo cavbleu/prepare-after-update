@@ -147,47 +147,6 @@ sudo prepare-after-update --exclude "a_,test,temp"
 
 - Пост-действия выполняются в любом случае
 
-```json
-{
-  "programs": [
-    {
-      "name": "Node.js",
-      "config_paths": [".nvm", ".node_repl_history"],
-      "check_command": "node --version",
-      "action": "install", // или "execute"
-      "packages": {
-        "apt": "nodejs npm",
-        "yum": "nodejs npm",
-        "dnf": "nodejs npm"
-      },
-      "command": "npm install -g yarn", // команда для выполнения
-      "post_action": [
-        "systemctl restart node-service",
-        "logrotate -f /etc/logrotate.d/node"
-      ]
-    },
-    {//Установка пакетов (явное указание):
-      "name": "Docker",
-      "action": "install",
-      "packages": {
-        "apt": "docker-ce docker-compose"
-      }
-    },
-    {//Выполнение команды:
-      "name": "Update config",
-      "action": "execute",
-      "command": "cp /tmp/new_config.ini ~/.config/app/config.ini",
-      "config_paths": [".config/app"]
-    },
-    {//Автоматический выбор (не указывать action):
-      "name": "Nginx",
-      "config_paths": ["nginx.conf"],
-      "command": "nginx -t && systemctl reload nginx"
-    }
-  ]
-}
-```
-
 Поля конфигурации:
 * name - отображаемое имя программы
 * config_paths - список относительных путей к конфигурационным файлам/директориям в домашней папке пользователя
