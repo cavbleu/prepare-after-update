@@ -132,7 +132,7 @@ sudo prepare-after-update --exclude "a_,test,temp"
 
 - Command - команда для выполнения (если action = "execute")
 
-- PostAction - переименовано с PostInstall для универсальности
+- PostAction - команды выполняемые после установки пакетов
 
 Логика обработки:
 
