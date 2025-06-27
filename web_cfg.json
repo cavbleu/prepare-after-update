@@ -1,0 +1,40 @@
+{
+  "programs": [
+    {
+      "name": "Node.js",
+      "config_paths": [".nvm", ".node_repl_history"],
+      "check_command": "node --version",
+      "action": "install", 
+      "packages": {
+        "apt": "nodejs npm",
+        "yum": "nodejs npm",
+        "dnf": "nodejs npm"
+      },
+      "command": "npm install -g yarn", 
+      "post_action": [
+        "systemctl restart node-service",
+        "logrotate -f /etc/logrotate.d/node"
+      ]
+    },
+    {
+  "name": "Docker",
+  "action": "install",
+  "packages": {
+    "apt": "docker-ce docker-compose"
+  }
+},
+{
+  "name": "Update config",
+  "action": "execute",
+  "command": "cp /tmp/new_config.ini ~/.config/app/config.ini",
+  "config_paths": [".config/app"]
+},
+{
+  "name": "Update config",
+  "action": "execute",
+  "command": "cp /tmp/new_config.ini ~/.config/app/config.ini",
+  "config_paths": [".config/app"]
+}
+
+  ]
+}

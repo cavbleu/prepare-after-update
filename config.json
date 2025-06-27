@@ -1,0 +1,6 @@
+{
+  "resource_url": "http://mysite.com/config.json",
+  "home_dir": "/home",
+  "log_path": "/var/log/prepare-after-update.log",
+  "exclude_prefixes": ["a_", "adminsec", "temp_"]
+}
