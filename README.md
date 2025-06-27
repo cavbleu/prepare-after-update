@@ -60,7 +60,7 @@ sudo cp prepare-after-update /usr/local/bin/
 sudo ln -s /usr/local/bin/prepare-after-update /sbin
 ```
 
-### 5. Создайте файл конфигурации (средний приоритет) для работы программы любым редактором в директории программы с именем `config.json`:
+### 5. Создайте файл конфигурации (средний приоритет) для работы программы любым редактором в директории программы с именем `/etc/prepare-after-update/config.json`:
 Пример:
 ```json
 {
@@ -70,6 +70,7 @@ sudo ln -s /usr/local/bin/prepare-after-update /sbin
   "exclude_prefixes": ["a_", "admin", "temp_"]
 }
 ```
+
 
 
 ### Использование флагов программы (наивысший приоритет):
