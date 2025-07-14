@@ -1,272 +1,186 @@
-# Программа управления установкой программ для пользователей Linux
+# Description of the "Prepare After Updater" Program
 
-## Описание программы
+The program is designed to automate the configuration of user environments after system updates or deployment of new machines. It handles configuration downloads, software installation, and settings customization for selected users.
 
-Программа предназначена для автоматической проверки и установки программного обеспечения на Linux-системах после переустановки системы и переразмеченным томом `/home`. Она выполняет следующие функции:
+**Documentation:**
 
-1. Сканирует домашние директории пользователей
-   - Рекурсивный поиск домашних директорий
-   - Фильтрация по префиксам (исключение системных папок)
-   - Поддержка пользовательских путей
-2. Проверяет наличие конфигурационных файлов указанных программ
-3. Устанавливает недостающее ПО согласно конфигурации
-   - Автоматическое определение менеджера пакетов (APT/APT-GET/YUM/DNF)
-   - Обновление базы перед установкой
-   - Проверка установленных версий
-   - Установка/обновление пакетов
-   - Автоопределение нужных действий
-   - Выполнение пост-установочных скриптов
-4. Работа с конфигурациями
-   - Многоуровневая система настроек конфигураций: `Флаги командной строки (наивысший приоритет), Локальный config.json (средний приоритет), Встроенные значения по умолчанию (низший приоритет)`
-   - Поддержка удаленных и локальных конфигураций
-   - Автогенерация шаблонов конфигураций
-   - Валидация JSON-структуры
-5. Ведет подробный лог всех операций
-   - Запись вывода всех выполняемых команд
-   - Подробные сообщения об ошибках
-   - Возможность настройки пути к лог-файлу
-6. Безопасность:
-   - Проверка прав root
-   - Очистка временных файлов
-7. Гибкость:
-   - Поддержка разных дистрибутивов Linux
+[`Read in English`](README_RU.md)  
+[`Project Build`](docs/EN/README_compile.md)  
+[`Program Mechanics`](docs/EN/README_Mechanisms.md)  
 
-## Требования
+---
 
-- ОС: Linux (AltLinux, Ubuntu, Debian, RHEL, Fedora и производные)
-- Права `root` для установки пакетов
-- Доступ в интернет для загрузки конфигурационного файла
-- Установленные базовые утилиты: `curl, apt-get/apt/yum/dnf` (в зависимости от дистрибутива)
+## **1. Core Functions and Workflow**
 
-## Сборка
+### **1.1. Initialization and Argument Processing**
+- **Command-line flag parsing**:
+  - `--version` - displays program version 
+  - `--help` - shows usage instructions
+  - `--home` - specifies path to user home directories (default: `/home`)
+  - `--exclude` - list of user prefixes to exclude (e.g., `a_,adminsec`)
+  - `--user` - processes a specific user (by name)
+  - `--config` - path to configuration file (default: `/etc/prepare-after-updater/config.json`)
+  - `--download` - name of downloadable configuration file (default: `web_cfg.json`)
+  - `--log` - path to log file (default: `/var/log/prepare-after-updater.log`)
+  - `--autoconfig` - generates a configuration template and exits
 
-### 1. Инициализируйте модули:
-```bash
-go mod init tidy
-```
-### 2. Скомпилируйте программу:
-```bash
-go build -o prepare-after-update prepare-after-update.go
-chmod +x prepare-after-update
-```
+- **Privilege check**:
+  - Requires `root` privileges (`os.Geteuid() != 0` → error).
 
-### 3. Скопируйте в нужную директорию:
-```bash
-sudo cp prepare-after-update /usr/local/bin/
-```
+---
 
-### 4. Создайте ссылку в директории sbin:
-```bash
-sudo ln -s /usr/local/bin/prepare-after-update /sbin
-```
-
-### 5. Создайте файл конфигурации (средний приоритет) для работы программы любым редактором в директории программы с именем `/etc/prepare-after-update/config.json`:
-Пример:
+### **1.2. Configuration Loading and Processing**
+#### **1.2.1. Application Configuration (`AppConfig`)**
+Structure:
 ```json
 {
-  "resource_url": "http://mysite.com/config.json",
+  "resource_url": "URL or file:// path to configuration",
   "home_dir": "/home",
-  "log_path": "/var/log/prepare-after-update.log",
-  "exclude_prefixes": ["a_", "admin", "temp_"]
+  "log_path": "/var/log/prepare-after-updater.log",
+  "exclude_prefixes": ["a_", "adminsec"]
 }
 ```
+- If no config is specified, defaults are used.
+- Command-line flags override config parameters.
 
-
-
-### Использование флагов программы (наивысший приоритет):
-```bash
-sudo prepare-after-update [ФЛАГИ]
-```
-
-#### Флаги программы
-
-| Флаг         | Тип    | Обязательный | Описание                                                                 | Значение по умолчанию                          | Пример использования                     |
-|--------------|--------|--------------|--------------------------------------------------------------------------|-----------------------------------------------|------------------------------------------|
-| `--help`     | bool   | Нет          | Показать справку по использованию программы                              | -                                             | `--help`                                 |
-| `--version`  | bool   | Нет          | Показать версию программы                                               | -                                             | `--version`                              |
-| `--config` | string | Нет          | Путь к конфигурационнуму пути программы                                   | `/etc/prepare-after-updater/config.json` | `--config config.json` |
-| `--download` | string | Нет          | URL для скачивания JSON-конфигурации                                    | `https://example.com/path/to/programs_config.json` | `--download http://mysite.com/config.json` |
-| `--home`     | string | Нет          | Путь к домашним директориям пользователей                               | `/home`                                       | `--home /mnt/home`                       |
-| `--log`   | string | Нет          | Полный путь к файлу логов                                               | `./tmp_updates/run.log`                       | `--log /var/log/installer.log`        |
-| `--exclude`  | string | Нет          | Префиксы директорий для исключения (через запятую без пробелов)          | `a_,adminsec`                                 | `--exclude a_,test,temp`                 |
-| `--autoconfig`  | string | Нет          | Генерация шаблона web-конфигурации         | `a_,admin`                                 | `--autoconfig my_config.json`                 |
-| `--user`  | string | Нет          | Указание конкретного пользователя         | `user`                                 | `--user username`                 |
-
-### Особенности использования флагов:
-
-1. **Порядок флагов** не имеет значения
-2. Можно комбинировать несколько флагов:
-   ```bash
-   sudo prepare-after-update --home /mnt/home --exclude a_,test --logout /var/log/installer.log
-   ```
-3. Для флагов `--help` и `--version` другие флаги игнорируются
-4. В значениях флагов не используйте кавычки, даже если есть пробелы:
-
-Правильно: `--exclude a_,test,temp`
-
-Неправильно: `--exclude "a_,test,temp"`
-
-### Примеры использования:
-
-```bash
-# Базовая установка с параметрами по умолчанию
-sudo prepare-after-update
-
-# С указанием альтернативного источника конфигурации
-sudo prepare-after-update --download https://my.domain.com/config.json
-
-# С указанием альтернативного локального источника конфигурации
-sudo prepare-after-update --download file:///absolute/path/to/web_cfg.json
-
-# С изменением домашней директории и файла логов
-sudo prepare-after-update --home /mnt/home --logout /var/log/installer.log
-
-# С дополнительными исключениями директорий
-sudo prepare-after-update --exclude "a_,test,temp" 
-```
-
-## Формат JSON-конфигурации:\
-
-Поля в структуре скачиваемого json-файла:
-
-- Action - определяет тип операции ("install" или "execute")
-
-- Command - команда для выполнения (если action = "execute")
-
-- PostAction - команды выполняемые после установки пакетов
-
-Логика обработки:
-
-- Если action не указан, программа автоматически определяет:
-
-- Установка, если конфигурации нет
-
-- Выполнение команды, если конфигурация есть
-
-- При выполнении команд выводится их вывод в лог
-
-- Пост-действия выполняются в любом случае
-
-Поля конфигурации:
-* name - отображаемое имя программы
-* config_paths - список относительных путей к конфигурационным файлам/директориям в домашней папке пользователя
-* check_command - команда для проверки наличия программы в системе
-* action - указание действия (install, execute)
-* packages - список пакетов для установки (apt, apt-get, yum, dnf)
-* command - команда для выполнения (если action = "execute")
-* post_action - команда выполнения после установки
-
-### Пример реальной конфигурации в JSON-файле:
-
+#### **1.2.2. Software Configuration (`ProgramConfig`)**
+Structure:
 ```json
 {
   "programs": [
     {
-      "name": "Node.js",
-      "config_paths": [".nvm", ".node_repl_history"],
-      "check_command": "node --version",
-      "action": "install", // или "execute"
-      "packages": {
-        "apt": "nodejs npm",
-        "yum": "nodejs npm",
-        "dnf": "nodejs npm"
-      },
-      "command": "npm install -g yarn", // команда для выполнения
-      "post_action": [
-        "systemctl restart node-service",
-        "logrotate -f /etc/logrotate.d/node"
-      ]
-    },
-    {
-      "name": "Docker",
-      "action": "install",
-      "packages": {
-        "apt": "docker-ce docker-compose"
-      }
-    },
-    {
-      "name": "Update config",
-      "action": "execute",
-      "command": "cp /tmp/new_config.ini ~/.config/app/config.ini",
-      "config_paths": [".config/app"]
-    },
-    {
-      "name": "Nginx",
-      "config_paths": ["nginx.conf"],
-      "command": "nginx -t && systemctl reload nginx"
+      "name": "Program name",
+      "config_paths": [".config/app"],
+      "check_command": "command to verify installation",
+      "action": "install | execute",
+      "packages": {"apt": "package1 package2", "yum": "package1 package2"},
+      "command": "command to execute",
+      "post_action": ["command1", "command2"]
     }
   ]
 }
 ```
+- Loaded from `web_cfg.json` (locally or via URL).
+- Supports loading from:
+  - HTTP (`http://example.com/config.json`)
+  - Local files (`file:///path/to/config.json`)
 
-### Доступность JSON-ресурса
-Конфигурационный JSON-файл должен быть доступен по HTTP/HTTPS. Рекомендации:
+---
 
-1. Размещение:
+### **1.3. User Selection for Processing**
+1. If `--user` is specified, only their home directory is processed.
+2. If no user is specified:
+   - Scans `home_dir` (default: `/home`).
+   - Excludes folders with prefixes from `exclude_prefixes`.
+   - Displays interactive user selection menu.
 
-* На веб-сервере организации
+---
 
-* В облачном хранилище (S3, GitHub Gist и т.д.)
+### **1.4. Program Processing (Core Workflow)**
+For each program in the config:
+1. **Configuration check**:
+   - Searches files in `config_paths` (e.g., `~/.config/app`).
+   - If files exist → program is considered configured.
 
-* На внутреннем файловом сервере
+2. **Action determination**:
+   - If `action` is unspecified:
+     - If config exists → `action = "execute"`.
+     - If no config → `action = "install"`.
 
-2. Требования к доступности:
+3. **Action execution**:
+   - **Installation (`install`)**:
+     - Verifies program installation (`check_command`).
+     - If not installed → installs via package manager (`apt`, `apt-get`, `yum`, `dnf`).
+   - **Execution (`execute`)**:
+     - Runs the `command`.
+   - **Post-actions (`post_action`)**:
+     - Executes additional commands after installation/configuration.
 
-* URL должен быть доступен с машин, где запускается программа
+4. **Parallel processing**:
+   - Programs are processed concurrently (goroutines + `sync.WaitGroup`).
 
-* Сервер должен отдавать файл с правильными HTTP-заголовками
+---
 
-* Рекомендуется использовать HTTPS для безопасности
+### **1.5. Additional Features**
+- **Package database update**:
+  - Automatically detects package manager (`apt`, `apt-get`, `yum`, `dnf`).
+  - Executes `apt update` / `yum check-update`.
+- **Logging**:
+  - Writes to file (`/var/log/prepare-after-updater.log`) and `stdout`.
+  - Format: `[date] [time] message`.
+- **Config template generation**:
+  - `--autoconfig output.json` → creates a JSON template for manual editing.
 
-4. Частота обновления:
+---
 
-* Программа скачивает конфигурацию при каждом запуске
+## **2. Usage Examples**
+### **2.1. Installing Software for User `user1`**
+```bash
+sudo prepare-after-updater --user user1 --download https://example.com/config.json
+```
+1. Downloads `config.json` from URL.
+2. Applies settings only to `/home/user1`.
 
-* Для изменения списка устанавливаемых программ достаточно обновить JSON-файл
+### **2.2. Interactive User Selection**
+```bash
+sudo prepare-after-updater --config /etc/custom-config.json
+```
+1. Loads config from `/etc/custom-config.json`.
+2. Displays user list (excluding `a_*`, `adminsec*`).
+3. Processes selected user.
 
-5. Безопасность:
+### **2.3. Template Generation**
+```bash
+prepare-after-updater --autoconfig myconfig.json
+```
+Creates `myconfig.json` with sample program configuration.
 
-* Рекомендуется подписывать конфигурацию или проверять хеш
+---
 
-* Можно ограничить доступ по IP
+## **3. Error Handling and Key Considerations**
+- **Configuration loading errors**:
+  - If URL is unreachable → program exits with error.
+  - If local file is missing → uses default config.
+- **Dependency checks**:
+  - If no package manager is found → manual installation only.
+- **Permissions**:
+  - Requires `root` for package installation and `/home` access.
+- **Temporary files**:
+  - Downloaded `web_cfg.json` is deleted after processing.
 
-## Логирование
-Программа ведет подробный лог всех операций:
+---
 
-По умолчанию: /var/log/prepare-after-updater.log
-
-Можно изменить флагом --log
-
-Лог дублируется в stdout
-
-Формат логов:
-
-```log
-[Дата Время] Сообщение
+## **4. Detailed Logic (Pseudocode)**
+```plaintext
+1. Parse arguments
+2. If --version → display version and exit
+3. If --help → display help and exit
+4. If --autoconfig → generate template and exit
+5. Initialize logger
+6. Check privileges (root only)
+7. Load configuration (flags > config > defaults)
+8. Update package database (if package manager available)
+9. User selection:
+   - If --user → process only specified user
+   - Else → interactive selection
+10. For selected user:
+    - Download program config (if URL provided)
+    - For each program:
+      - Determine action (install/execute)
+      - Install or execute command
+      - Run post-actions
+11. Close log file and exit
 ```
 
-## Алгоритм работы
-* Проверка прав root
+---
+### **Summary**
+The program automates:
+- Software installation via package managers.
+- User environment configuration.
+- Post-installation command execution.
 
-* Загрузка конфигурации (--download)
-
-* Сканирование домашних директорий (--home)
-
-* Фильтрация по исключениям (--exclude)
-
-* Выбор пользователя (интерактивно)
-
-* Для каждой программы в конфигурации:
-
-1. Проверка наличия конфигурационных файлов
-
-2. Проверка установленной программы
-
-3. Установка (если требуется)
-
-4. Выполнение пост команд
-
-5. Запись результатов в лог
-
-
-
+Flexibility is ensured by:
+- JSON configuration support.
+- URL-based config loading.
+- Parallel task execution.
+- Advanced logging.
