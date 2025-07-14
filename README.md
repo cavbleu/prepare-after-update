@@ -4,7 +4,7 @@ The program is designed to automate the configuration of user environments after
 
 **Documentation:**
 
-[`Read in English`](README_RU.md)  
+[`Читать на Русском языке`](README_RU.md)  
 [`Project Build`](docs/EN/README_compile.md)  
 [`Program Mechanics`](docs/EN/README_Mechanisms.md)  
 
